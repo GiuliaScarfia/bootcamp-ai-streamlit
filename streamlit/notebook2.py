@@ -40,9 +40,10 @@ def load_data():
             df = pd.DataFrame([{
                 "nome": get_label(item),
                 "indirizzo": item.get("clvapit:fullAddress", "Sconosciuto"),
-                "regione": item.get("clvapit:hasRegion", {}).get("@id", "").split("/")[-1] or "Sconosciuto",
-                "provincia": item.get("clvapit:hasProvince", {}).get("@id", "").split("/")[-1] or "Sconosciuto",
-                "città": item.get("clvapit:hasCity", {}).get("@id", "").split("/")[-1] or "Sconosciuto"
+                "regione": (item.get("clvapit:hasRegion")[0] if isinstance(item.get("clvapit:hasRegion"), list) else item.get("clvapit:hasRegion", {})).get("@id", "").split("/")[-1] if item.get("clvapit:hasRegion") else "Sconosciuto",
+                "provincia": (item.get("clvapit:hasProvince")[0] if isinstance(item.get("clvapit:hasProvince"), list) else item.get("clvapit:hasProvince", {})).get("@id", "").split("/")[-1] if item.get("clvapit:hasProvince") else "Sconosciuto",
+                "città": (item.get("clvapit:hasCity")[0] if isinstance(item.get("clvapit:hasCity"), list) else item.get("clvapit:hasCity", {})).get("@id", "").split("/")[-1] if item.get("clvapit:hasCity") else "Sconosciuto",
+
             } for item in data])
             return df
         else:
