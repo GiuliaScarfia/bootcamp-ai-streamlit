@@ -1,4 +1,3 @@
-import json
 import requests
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -24,8 +23,7 @@ def get_label(item):
     else:
         return "Sconosciuto"
 
-
-# Funzione per caricare i dati
+#Funzione per caricare i dati
 def load_data():
     try:
         response = requests.get(url)
@@ -40,10 +38,21 @@ def load_data():
             df = pd.DataFrame([{
                 "nome": get_label(item),
                 "indirizzo": item.get("clvapit:fullAddress", "Sconosciuto"),
-                "regione": (item.get("clvapit:hasRegion")[0] if isinstance(item.get("clvapit:hasRegion"), list) else item.get("clvapit:hasRegion", {})).get("@id", "").split("/")[-1] if item.get("clvapit:hasRegion") else "Sconosciuto",
-                "provincia": (item.get("clvapit:hasProvince")[0] if isinstance(item.get("clvapit:hasProvince"), list) else item.get("clvapit:hasProvince", {})).get("@id", "").split("/")[-1] if item.get("clvapit:hasProvince") else "Sconosciuto",
-                "città": (item.get("clvapit:hasCity")[0] if isinstance(item.get("clvapit:hasCity"), list) else item.get("clvapit:hasCity", {})).get("@id", "").split("/")[-1] if item.get("clvapit:hasCity") else "Sconosciuto",
-
+                "regione": (
+                    item.get("clvapit:hasRegion", [{}])[0].get("@id", "").split("/")[-1]
+                    if isinstance(item.get("clvapit:hasRegion", None), list)
+                    else item.get("clvapit:hasRegion", {}).get("@id", "").split("/")[-1]
+                ) or "Sconosciuto",
+                "provincia": (
+                    item.get("clvapit:hasProvince", [{}])[0].get("@id", "").split("/")[-1]
+                    if isinstance(item.get("clvapit:hasProvince", None), list)
+                    else item.get("clvapit:hasProvince", {}).get("@id", "").split("/")[-1]
+                ) or "Sconosciuto",
+                "città": (
+                    item.get("clvapit:hasCity", [{}])[0].get("@id", "").split("/")[-1]
+                    if isinstance(item.get("clvapit:hasCity", None), list)
+                    else item.get("clvapit:hasCity", {}).get("@id", "").split("/")[-1]
+                ) or "Sconosciuto"
             } for item in data])
             return df
         else:
@@ -52,7 +61,6 @@ def load_data():
     except requests.exceptions.RequestException as e:
         st.error(f"Errore nella richiesta API: {e}")
         return pd.DataFrame()
-
 
 # Funzione principale per visualizzare i dati e le analisi
 def main():
@@ -126,17 +134,37 @@ def main():
 
         # Analisi 4: Mappa della distribuzione dei luoghi culturali per regione
         st.subheader("Mappa della distribuzione dei luoghi culturali per regione")
-        df_filtered = df[df['regione'] != 'Sconosciuto']
-        region_counts = df_filtered['regione'].value_counts().reset_index()
-        region_counts.columns = ['regione', 'count']
-        italy_regions = gpd.read_file(
-            "https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson")
-        italy_regions = italy_regions.merge(region_counts, left_on="reg_name", right_on="regione", how="left").fillna(0)
-        fig, ax = plt.subplots(1, 1, figsize=(10, 12))
-        italy_regions.plot(column="count", cmap="OrRd", linewidth=0.8, edgecolor="black", legend=True, ax=ax)
-        plt.title("Distribuzione dei luoghi culturali per regione in Italia")
-        plt.axis("off")
-        st.pyplot(fig)
+        try:
+            df_filtered = df[df['regione'] != 'Sconosciuto']
+            region_counts = df_filtered['regione'].value_counts().reset_index()
+            region_counts.columns = ['regione', 'count']
+
+            # URL alternativo per geojson semplificato
+            geojson_url = "https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson"
+
+            italy_regions = gpd.read_file(geojson_url)
+            italy_regions = italy_regions.merge(
+                region_counts,
+                left_on="reg_name",
+                right_on="regione",
+                how="left"
+            ).fillna(0)
+
+            fig, ax = plt.subplots(1, 1, figsize=(10, 12))
+            italy_regions.plot(
+                column="count",
+                cmap="OrRd",
+                linewidth=0.8,
+                edgecolor="black",
+                legend=True,
+                ax=ax
+            )
+            plt.title("Distribuzione dei luoghi culturali per regione in Italia")
+            plt.axis("off")
+            st.pyplot(fig)
+
+        except Exception as e:
+            st.error(f"Errore nel caricamento della mappa: {str(e)}")
 
         # Commento
         st.markdown("""
